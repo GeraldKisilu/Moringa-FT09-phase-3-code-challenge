@@ -51,22 +51,22 @@ class TestModels(unittest.TestCase):
         self.assertEqual(articles[0][0], 1) 
         self.assertEqual(articles[0][1], "Test Article") 
 
-#     def test_magazines(self):
-#         # Mocking database response
-#         self.cursor.fetchall.return_value = [(1, "Tech Magazine", "Technology")]
-#         author = Author(1, "John Doe")
-#         magazines = author.magazines(self.cursor)
-#         # Checking if execute method was called with correct argument
-#         self.cursor.execute.assert_called_once_with("""
-#             SELECT magazines.*
-#             FROM magazines
-#             JOIN articles ON magazines.id = articles.magazine_id
-#             WHERE articles.author_id = ?
-#         """, (1,))
-#         # Checking if magazines were fetched correctly
-#         self.assertEqual(len(magazines), 1)
-#         self.assertEqual(magazines[0][0], 1)  
-#         self.assertEqual(magazines[0][1], "Tech Magazine") 
+    def test_magazines(self):
+        # Mocking database response
+        self.cursor.fetchall.return_value = [(1, "Tech Magazine", "Technology")]
+        author = Author(1, "John Doe")
+        magazines = author.magazines(self.cursor)
+        # Checking if execute method was called with correct argument
+        self.cursor.execute.assert_called_once_with("""
+            SELECT magazines.*
+            FROM magazines
+            JOIN articles ON magazines.id = articles.magazine_id
+            WHERE articles.author_id = ?
+        """, (1,))
+        # Checking if magazines were fetched correctly
+        self.assertEqual(len(magazines), 1)
+        self.assertEqual(magazines[0][0], 1)  
+        self.assertEqual(magazines[0][1], "Tech Magazine") 
 
-# if __name__ == "__main__":
-#     unittest.main()
+if __name__ == "__main__":
+    unittest.main()

@@ -39,17 +39,17 @@ class TestModels(unittest.TestCase):
         self.assertEqual(authors[1].id, 2)
         self.assertEqual(authors[1].name, "John Doe")
 
-#     def test_articles(self):
-#         # Mocking database response
-#         self.cursor.fetchall.return_value = [(1, "Test Article", "Test Content", 1, 1)]
-#         author = Author(1, "John Doe")
-#         articles = author.articles(self.cursor)
-#         # Checking if execute method was called with correct argument
-#         self.cursor.execute.assert_called_once_with("SELECT * FROM articles WHERE author_id = ?", (1,))
-#         # Checking if articles were fetched correctly
-#         self.assertEqual(len(articles), 1)
-#         self.assertEqual(articles[0][0], 1) 
-#         self.assertEqual(articles[0][1], "Test Article") 
+    def test_articles(self):
+        # Mocking database response
+        self.cursor.fetchall.return_value = [(1, "Test Article", "Test Content", 1, 1)]
+        author = Author(1, "John Doe")
+        articles = author.articles(self.cursor)
+        # Checking if execute method was called with correct argument
+        self.cursor.execute.assert_called_once_with("SELECT * FROM articles WHERE author_id = ?", (1,))
+        # Checking if articles were fetched correctly
+        self.assertEqual(len(articles), 1)
+        self.assertEqual(articles[0][0], 1) 
+        self.assertEqual(articles[0][1], "Test Article") 
 
 #     def test_magazines(self):
 #         # Mocking database response

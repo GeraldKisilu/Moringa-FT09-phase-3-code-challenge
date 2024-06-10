@@ -1,72 +1,200 @@
 import unittest
-from unittest.mock import MagicMock
-from models.author import Author
 from models.article import Article
+from models.author import Author
 from models.magazine import Magazine
+from database.setup import create_tables, get_db_connection
 
 class TestModels(unittest.TestCase):
+
     def setUp(self):
-        #creating a Mocking for database cursor
-        self.cursor = MagicMock()
+        self.conn = get_db_connection()
+        self.cursor = self.conn.cursor()
+        create_tables()
+        self.cursor.execute('DELETE FROM articles')
+        self.cursor.execute('DELETE FROM authors')
+        self.cursor.execute('DELETE FROM magazines')
+        self.conn.commit()
+
+    def tearDown(self):
+        self.conn.close()
 
     def test_author_creation(self):
-        author = Author(1, "John Doe")
+        author = Author(name="John Doe")
+        author.create_author(self.cursor)
         self.assertEqual(author.name, "John Doe")
+        self.assertIsNotNone(author.id)
 
     def test_article_creation(self):
-        article = Article(1, "Test Title", "Test Content", 1, 1)
+        author = Author(name="John Doe")
+        author.create_author(self.cursor)
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        article = Article(title="Test Title", content="Test Content", author=author, magazine_id=magazine.id)
+        article.save(self.cursor)
         self.assertEqual(article.title, "Test Title")
+        self.assertEqual(article.content, "Test Content")
+        self.assertEqual(article.author.id, author.id)
+        self.assertEqual(article.magazine_id, magazine.id)
+        self.assertIsNotNone(article.id)
 
     def test_magazine_creation(self):
-        magazine = Magazine(1, "Tech Weekly", "Technology")
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
         self.assertEqual(magazine.name, "Tech Weekly")
+        self.assertEqual(magazine.category, "Technology")
+        self.assertIsNotNone(magazine.id)
 
-    def test_create_author(self):
-        author = Author(None, "John Doe")
+    def test_author_articles(self):
+        author = Author(name="John Doe")
         author.create_author(self.cursor)
-        self.cursor.execute.assert_called_once_with("INSERT INTO authors (name) VALUES (?)", ("John Doe",))
-
-    def test_get_all_authors(self):
-        # Mocking database response
-        self.cursor.fetchall.return_value = [(1, "John Doe"), (2, "John Doe")]
-        authors = Author.get_all_authors(self.cursor)
-        # Checking if execute method was called with correct argument
-        self.cursor.execute.assert_called_once_with("SELECT * FROM authors")
-        # Checking if authors were fetched correctly
-        self.assertEqual(len(authors), 2)
-        self.assertEqual(authors[0].id, 1)
-        self.assertEqual(authors[0].name, "John Doe")
-        self.assertEqual(authors[1].id, 2)
-        self.assertEqual(authors[1].name, "John Doe")
-
-    def test_articles(self):
-        # Mocking database response
-        self.cursor.fetchall.return_value = [(1, "Test Article", "Test Content", 1, 1)]
-        author = Author(1, "John Doe")
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        Article(title="Title 1", content="Content 1", author=author, magazine_id=magazine.id).save(self.cursor)
+        Article(title="Title 2", content="Content 2", author=author, magazine_id=magazine.id).save(self.cursor)
         articles = author.articles(self.cursor)
-        # Checking if execute method was called with correct argument
-        self.cursor.execute.assert_called_once_with("SELECT * FROM articles WHERE author_id = ?", (1,))
-        # Checking if articles were fetched correctly
-        self.assertEqual(len(articles), 1)
-        self.assertEqual(articles[0][0], 1) 
-        self.assertEqual(articles[0][1], "Test Article") 
+        self.assertEqual(len(articles), 2)
 
-    def test_magazines(self):
-        # Mocking database response
-        self.cursor.fetchall.return_value = [(1, "Tech Magazine", "Technology")]
-        author = Author(1, "John Doe")
+    def test_author_magazines(self):
+        author = Author(name="John Doe")
+        author.create_author(self.cursor)
+        magazine1 = Magazine(name="Tech Weekly", category="Technology")
+        magazine2 = Magazine(name="Health Monthly", category="Health")
+        magazine1.save(self.cursor)
+        magazine2.save(self.cursor)
+        Article(title="Title 1", content="Content 1", author=author, magazine_id=magazine1.id).save(self.cursor)
+        Article(title="Title 2", content="Content 2", author=author, magazine_id=magazine2.id).save(self.cursor)
         magazines = author.magazines(self.cursor)
-        # Checking if execute method was called with correct argument
-        self.cursor.execute.assert_called_once_with("""
-            SELECT magazines.*
-            FROM magazines
-            JOIN articles ON magazines.id = articles.magazine_id
-            WHERE articles.author_id = ?
-        """, (1,))
-        # Checking if magazines were fetched correctly
-        self.assertEqual(len(magazines), 1)
-        self.assertEqual(magazines[0][0], 1)  
-        self.assertEqual(magazines[0][1], "Tech Magazine") 
+        self.assertEqual(len(magazines), 2)
 
-if __name__ == "__main__":
+    def test_magazine_articles(self):
+        author = Author(name="John Doe")
+        author.create_author(self.cursor)
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        Article(title="Title 1", content="Content 1", author=author, magazine_id=magazine.id).save(self.cursor)
+        Article(title="Title 2", content="Content 2", author=author, magazine_id=magazine.id).save(self.cursor)
+        articles = magazine.article_titles(self.cursor)
+        self.assertEqual(len(articles), 2)
+
+    def test_magazine_contributors(self):
+        author1 = Author(name="John Doe")
+        author2 = Author(name="Jane Smith")
+        author1.create_author(self.cursor)
+        author2.create_author(self.cursor)
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        Article(title="Title 1", content="Content 1", author=author1, magazine_id=magazine.id).save(self.cursor)
+        Article(title="Title 2", content="Content 2", author=author2, magazine_id=magazine.id).save(self.cursor)
+        contributors = magazine.contributing_authors(self.cursor)
+        self.assertEqual(len(contributors), 2)
+
+    def test_magazine_article_titles(self):
+        author = Author(name="John Doe")
+        author.create_author(self.cursor)
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        Article(title="Title 1", content="Content 1", author=author, magazine_id=magazine.id).save(self.cursor)
+        Article(title="Title 2", content="Content 2", author=author, magazine_id=magazine.id).save(self.cursor)
+        titles = magazine.article_titles(self.cursor)
+        self.assertEqual(len(titles), 2)
+        self.assertIn("Title 1", titles)
+        self.assertIn("Title 2", titles)
+
+    def test_magazine_contributing_authors(self):
+        author1 = Author(name="John Doe")
+        author2 = Author(name="Jane Smith")
+        author1.create_author(self.cursor)
+        author2.create_author(self.cursor)
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        Article(title="Title 1", content="Content 1", author=author1, magazine_id=magazine.id).save(self.cursor)
+        Article(title="Title 2", content="Content 2", author=author1, magazine_id=magazine.id).save(self.cursor)
+        Article(title="Title 3", content="Content 3", author=author1, magazine_id=magazine.id).save(self.cursor)
+        Article(title="Title 4", content="Content 4", author=author2, magazine_id=magazine.id).save(self.cursor)
+        authors = magazine.contributing_authors(self.cursor)
+        self.assertEqual(len(authors), 2)
+
+    def test_author_name_setter(self):
+        author = Author(name="John Doe")
+        author.name = "Jane Doe"
+        self.assertEqual(author.name, "Jane Doe")
+        with self.assertRaises(ValueError):
+            author.name = ""
+
+    def test_magazine_name_setter(self):
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.name = "Health Monthly"
+        self.assertEqual(magazine.name, "Health Monthly")
+        with self.assertRaises(ValueError):
+            magazine.name = ""
+
+    def test_magazine_category_setter(self):
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.category = "Health"
+        self.assertEqual(magazine.category, "Health")
+        with self.assertRaises(ValueError):
+            magazine.category = ""
+
+    def test_article_content(self):
+        author = Author(name="John Doe")
+        author.create_author(self.cursor)
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        article = Article(title="Test Title", content="Test Content", author=author, magazine_id=magazine.id)
+        article.save(self.cursor)
+        self.assertEqual(article.content, "Test Content")
+
+    def test_article_without_content(self):
+        author = Author(name="John Doe")
+        author.create_author(self.cursor)
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        with self.assertRaises(TypeError):
+            Article(title="Test Title", author=author, magazine_id=magazine.id).save(self.cursor)
+
+    def test_duplicate_author_name(self):
+        author1 = Author(name="John Doe")
+        author2 = Author(name="John Doe")
+        author1.create_author(self.cursor)
+        author2.create_author(self.cursor)
+        self.assertNotEqual(author1.id, author2.id)
+
+    def test_duplicate_magazine_name(self):
+        magazine1 = Magazine(name="Tech Weekly", category="Technology")
+        magazine2 = Magazine(name="Tech Weekly", category="Health")
+        magazine1.save(self.cursor)
+        magazine2.save(self.cursor)
+        self.assertNotEqual(magazine1.id, magazine2.id)
+
+    def test_magazine_no_articles(self):
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        articles = magazine.article_titles(self.cursor)
+        self.assertEqual(len(articles), 0)
+
+    def test_author_no_articles(self):
+        author = Author(name="John Doe")
+        author.create_author(self.cursor)
+        articles = author.articles(self.cursor)
+        self.assertEqual(len(articles), 0)
+
+    def test_magazine_no_contributors(self):
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        contributors = magazine.contributing_authors(self.cursor)
+        self.assertEqual(len(contributors), 0)
+
+    def test_magazine_no_article_titles(self):
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        titles = magazine.article_titles(self.cursor)
+        self.assertListEqual(titles, [])
+
+    def test_magazine_no_contributing_authors(self):
+        magazine = Magazine(name="Tech Weekly", category="Technology")
+        magazine.save(self.cursor)
+        authors = magazine.contributing_authors(self.cursor)
+        self.assertEqual(len(authors), 0)
+
+if __name__ == '__main__':
     unittest.main()
